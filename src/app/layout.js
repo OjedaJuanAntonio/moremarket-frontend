@@ -1,6 +1,6 @@
-// import '@/location/app/globals.css';
 import './globals.css';
 import Navbar from '../components/Navbar';
+import Footer from '../components/Footer';
 
 export const metadata = {
   title: 'MoreMarket',
@@ -12,7 +12,8 @@ export default function RootLayout({ children }) {
     <html lang="es">
       <body>
         <Navbar />
-        {children}
+        <main>{children}</main>
+        <Footer />
       </body>
     </html>
   );
