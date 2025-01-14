@@ -1,23 +1,64 @@
 import Image from 'next/image';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const AuctionCard = ({ auction }) => {
+  // Verifica si auction y product existen antes de intentar desestructurar
+  if (!auction || !auction.product) {
+    return <p>Cargando...</p>;
+  }
+
   const { product, start_time, end_time, bids } = auction;
   const [bidAmount, setBidAmount] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [currentBids, setCurrentBids] = useState(bids || []);
 
+  // WebSocket connection
+  useEffect(() => {
+    const ws = new WebSocket(`ws://localhost:8000/ws/auctions/${auction.id}/`);
+  
+    ws.onopen = () => {
+      console.log('✅ WebSocket conectado exitosamente');
+    };
+  
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log('📩 Mensaje recibido desde WebSocket:', data);
+  
+      if (data.amount) {
+        setCurrentBids((prevBids) => [
+          ...prevBids,
+          {
+            user: data.user || 'Usuario Desconocido',
+            amount: data.amount,
+            created_at: new Date().toISOString(),
+          },
+        ]);
+      }
+    };
+  
+    ws.onerror = (error) => {
+      console.error('❌ Error en WebSocket:', error);
+    };
+  
+    ws.onclose = () => {
+      console.log('🔌 WebSocket desconectado');
+    };
+  
+    return () => ws.close();
+  }, [auction.id]);
+  
   const handleBidSubmit = async (e) => {
     e.preventDefault();
-  
+
     const token = localStorage.getItem('token');
     if (!token) {
       setErrorMessage('Por favor, inicia sesión para realizar una puja.');
       return;
     }
-  
+
     try {
-      const response = await fetch('http://localhost:8000/api/bids/', {
+      const response = await fetch(`http://localhost:8000/api/bids/`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -28,7 +69,7 @@ const AuctionCard = ({ auction }) => {
           amount: bidAmount,
         }),
       });
-  
+
       if (response.ok) {
         setSuccessMessage('Puja realizada con éxito.');
         setBidAmount('');
@@ -41,48 +82,39 @@ const AuctionCard = ({ auction }) => {
       setErrorMessage('Error al conectarse con el servidor.');
     }
   };
-  
-  
 
   return (
     <div className="border rounded-lg p-4 shadow-md bg-white">
-      {/* Imagen del producto */}
-      <Image
-        src={product.image}
-        alt={product.name}
-        width={400}
-        height={300}
-        className="w-full h-48 object-cover rounded-md"
-      />
+      {/* Verifica que product.image exista antes de renderizar la imagen */}
+      {product.image && (
+        <Image
+          src={product.image}
+          alt={product.name}
+          width={400}
+          height={300}
+          className="w-full h-48 object-cover rounded-md"
+        />
+      )}
 
-      {/* Nombre y descripción del producto */}
       <h3 className="text-lg font-bold mt-2">{product.name}</h3>
       <p className="text-gray-600">{product.description}</p>
 
-      {/* Precio inicial */}
       <p className="text-gray-800 font-bold mt-2">Precio inicial: ${product.price}</p>
 
-      {/* Fecha de inicio y fin */}
       <p className="text-sm text-gray-500 mt-1">Inicio: {new Date(start_time).toLocaleString()}</p>
       <p className="text-sm text-gray-500">Fin: {new Date(end_time).toLocaleString()}</p>
 
-      {/* Historial de pujas */}
-      {bids && bids.length > 0 ? (
-        <div className="mt-4">
-          <h4 className="font-bold text-gray-700">Historial de Pujas:</h4>
-          <ul className="list-disc list-inside text-gray-600">
-            {bids.map((bid) => (
-              <li key={bid.id}>
-                Usuario {bid.user}: ${bid.amount} - {new Date(bid.created_at).toLocaleString()}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : (
-        <p className="text-gray-500 mt-4">Sin pujas aún.</p>
-      )}
+      <div className="mt-4">
+        <h4 className="font-bold text-gray-700">Historial de Pujas:</h4>
+        <ul className="list-disc list-inside text-gray-600">
+          {currentBids.map((bid, index) => (
+            <li key={index}>
+              Usuario {bid.user}: ${bid.amount} - {new Date(bid.created_at).toLocaleString()}
+            </li>
+          ))}
+        </ul>
+      </div>
 
-      {/* Formulario de puja */}
       <form onSubmit={handleBidSubmit} className="mt-4">
         <label htmlFor="bidAmount" className="block text-sm font-medium text-gray-700">
           Monto de la Puja:
@@ -104,7 +136,6 @@ const AuctionCard = ({ auction }) => {
         </button>
       </form>
 
-      {/* Mensajes de éxito o error */}
       {errorMessage && <p className="text-red-500 mt-2">{errorMessage}</p>}
       {successMessage && <p className="text-green-500 mt-2">{successMessage}</p>}
     </div>
