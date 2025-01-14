@@ -2,29 +2,23 @@ import Image from 'next/image';
 import { useState, useEffect } from 'react';
 
 const AuctionCard = ({ auction }) => {
-  // Verifica si auction y product existen antes de intentar desestructurar
-  if (!auction || !auction.product) {
-    return <p>Cargando...</p>;
-  }
-
   const { product, start_time, end_time, bids } = auction;
   const [bidAmount, setBidAmount] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [currentBids, setCurrentBids] = useState(bids || []);
 
+  // Obtener la puja más alta actual
+  const highestBid = currentBids.length > 0 ? Math.max(...currentBids.map((bid) => parseFloat(bid.amount))) : product.price;
+
   // WebSocket connection
   useEffect(() => {
     const ws = new WebSocket(`ws://localhost:8000/ws/auctions/${auction.id}/`);
-  
-    ws.onopen = () => {
-      console.log('✅ WebSocket conectado exitosamente');
-    };
-  
+
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      console.log('📩 Mensaje recibido desde WebSocket:', data);
-  
+      console.log('Mensaje recibido desde WebSocket:', data);
+
       if (data.amount) {
         setCurrentBids((prevBids) => [
           ...prevBids,
@@ -36,20 +30,22 @@ const AuctionCard = ({ auction }) => {
         ]);
       }
     };
-  
+
     ws.onerror = (error) => {
-      console.error('❌ Error en WebSocket:', error);
+      console.error('WebSocket Error:', error);
     };
-  
-    ws.onclose = () => {
-      console.log('🔌 WebSocket desconectado');
-    };
-  
+
     return () => ws.close();
   }, [auction.id]);
-  
+
   const handleBidSubmit = async (e) => {
     e.preventDefault();
+
+    // Validar si la puja es mayor que la puja más alta actual
+    if (parseFloat(bidAmount) <= highestBid) {
+      setErrorMessage(`La puja debe ser mayor que la puja más alta actual: $${highestBid}`);
+      return;
+    }
 
     const token = localStorage.getItem('token');
     if (!token) {
@@ -71,7 +67,16 @@ const AuctionCard = ({ auction }) => {
       });
 
       if (response.ok) {
+        const newBid = await response.json();
         setSuccessMessage('Puja realizada con éxito.');
+        setCurrentBids((prevBids) => [
+          ...prevBids,
+          {
+            user: 'Tú',
+            amount: newBid.amount,
+            created_at: newBid.created_at,
+          },
+        ]);
         setBidAmount('');
         setErrorMessage('');
       } else {
@@ -85,16 +90,13 @@ const AuctionCard = ({ auction }) => {
 
   return (
     <div className="border rounded-lg p-4 shadow-md bg-white">
-      {/* Verifica que product.image exista antes de renderizar la imagen */}
-      {product.image && (
-        <Image
-          src={product.image}
-          alt={product.name}
-          width={400}
-          height={300}
-          className="w-full h-48 object-cover rounded-md"
-        />
-      )}
+      <Image
+        src={product.image}
+        alt={product.name}
+        width={400}
+        height={300}
+        className="w-full h-48 object-cover rounded-md"
+      />
 
       <h3 className="text-lg font-bold mt-2">{product.name}</h3>
       <p className="text-gray-600">{product.description}</p>
