@@ -1,35 +1,51 @@
+'use client';
+
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { isAuthenticated, logout } from '@/utils/auth';
 
 const Navbar = () => {
-    return (
-        <nav className="bg-blue-600 p-4 shadow-md">
-            <div className="container mx-auto flex justify-between items-center">
-                <h1 className="text-3xl font-bold text-white">MoreMarket</h1>
-                <ul className="flex space-x-6">
-                    <li>
-                        <Link href="/">
-                            Inicio
-                        </Link>
-                    </li>
-                    <li>
-                        <Link href="/subastas">
-                            Subastas
-                        </Link>
-                    </li>
-                    <li>
-                        <Link href="/tienda">
-                            Tienda
-                        </Link>
-                    </li>
-                    <li>
-                        <Link href="/perfil">
-                            Mi Perfil
-                        </Link>
-                    </li>
-                </ul>
-            </div>
-        </nav>
-    );
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    try {
+      setIsLoggedIn(isAuthenticated()); // Verifica si el usuario está autenticado
+    } catch {
+      setIsLoggedIn(false);
+    }
+  }, []);
+
+  return (
+    <nav className="bg-blue-600 text-white p-4">
+      <ul className="flex space-x-4">
+        <li>
+          <Link href="/">Inicio</Link>
+        </li>
+        <li>
+          <Link href="/subastas">Subastas</Link>
+        </li>
+        {isLoggedIn ? (
+          <>
+            <li>
+              <Link href="/auction-management">Gestión de Subastas</Link>
+            </li>
+            <li>
+              <button
+                onClick={logout}
+                className="text-red-400 hover:text-red-600 transition-colors"
+              >
+                Cerrar sesión
+              </button>
+            </li>
+          </>
+        ) : (
+          <li>
+            <Link href="/login">Iniciar sesión</Link>
+          </li>
+        )}
+      </ul>
+    </nav>
+  );
 };
 
 export default Navbar;

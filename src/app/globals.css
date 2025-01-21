@@ -13,3 +13,8 @@ body {
 footer a:hover svg {
     fill: #9ca3af;
 }
+
+
+h1, h2, p {
+  margin: 0 0 10px;
+}
