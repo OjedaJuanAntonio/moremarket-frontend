@@ -1,14 +1,29 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useContext, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { AuthContext } from '@/context/AuthContext';
 
 export default function NuevaSubastaPage() {
+  const { user, loading } = useContext(AuthContext);
+  const router = useRouter();
+
   const [formData, setFormData] = useState({
     product: '',
     start_time: '',
     end_time: '',
   });
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
 
+  // Redirige al login si no hay un usuario autenticado
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  // Maneja los cambios en el formulario
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -16,42 +31,53 @@ export default function NuevaSubastaPage() {
     });
   };
 
+  // Maneja el envío del formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    const token = localStorage.getItem('token');
-    if (!token) {
-      alert('Por favor, inicia sesión primero.');
-      return;
-    }
+    setError('');
+    setSuccess(false);
 
     try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Token no encontrado. Por favor, inicia sesión.');
+      }
+
       const response = await fetch('http://localhost:8000/api/auctions/', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
       });
 
-      if (response.ok) {
-        alert('Subasta creada con éxito.');
-      } else {
-        alert('Error al crear la subasta.');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Error al crear la subasta.');
       }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('Error al crear la subasta.');
+
+      setSuccess(true);
+      alert('Subasta creada con éxito.');
+      router.push('/subastas');
+    } catch (err) {
+      console.error('Error al crear la subasta:', err.message);
+      setError(err.message);
     }
   };
+
+  if (loading) {
+    return <p>Cargando...</p>; // Estado de carga mientras se verifica la autenticación
+  }
 
   return (
     <div className="p-6">
       <h1 className="text-4xl font-bold mb-4">Crear Nueva Subasta</h1>
+      {error && <p className="text-red-500 mb-4">{error}</p>}
+      {success && <p className="text-green-500 mb-4">Subasta creada exitosamente.</p>}
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-1" htmlFor="product">
+          <label htmlFor="product" className="block text-sm font-medium mb-1">
             Producto
           </label>
           <input
@@ -65,7 +91,7 @@ export default function NuevaSubastaPage() {
           />
         </div>
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-1" htmlFor="start_time">
+          <label htmlFor="start_time" className="block text-sm font-medium mb-1">
             Fecha de Inicio
           </label>
           <input
@@ -79,7 +105,7 @@ export default function NuevaSubastaPage() {
           />
         </div>
         <div className="mb-4">
-          <label className="block text-sm font-medium mb-1" htmlFor="end_time">
+          <label htmlFor="end_time" className="block text-sm font-medium mb-1">
             Fecha de Fin
           </label>
           <input
