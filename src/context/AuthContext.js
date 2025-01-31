@@ -1,80 +1,62 @@
 // "use client";
 
-// import React, { createContext, useState, useEffect } from 'react';
-// import axiosInstance from '../utils/axiosInstance';
+// import React, { createContext, useState, useEffect } from "react";
+// import axiosInstance from "../utils/axiosInstance";
 
 // export const AuthContext = createContext();
 
 // export const AuthProvider = ({ children }) => {
-//     const [user, setUser] = useState(null); // Estado para almacenar los datos del usuario autenticado
-//     const [loading, setLoading] = useState(true); // Estado para indicar si se está cargando la autenticación
-//     const [isAuthenticated, setIsAuthenticated] = useState(false); // Estado para verificar si el usuario está autenticado
+//   const [user, setUser] = useState(null);
+//   const [loading, setLoading] = useState(true);
 
-//     // Función para verificar el estado de la sesión al cargar la aplicación
-//     useEffect(() => {
-//         const fetchUser = async () => {
-//             const token = localStorage.getItem('access_token'); // Obtén el token del almacenamiento local
-//             if (!token) {
-//                 setLoading(false);
-//                 return;
-//             }
+//   useEffect(() => {
+//     console.log("AuthProvider inicializado");
+//     const fetchUser = async () => {
+//       const token = localStorage.getItem("access_token");
+//       if (!token) {
+//         setLoading(false);
+//         return;
+//       }
 
-//             try {
-//                 const response = await axiosInstance.get('/api/users/profile/', {
-//                     headers: {
-//                         Authorization: `Bearer ${token}`,
-//                     },
-//                 });
-//                 setUser(response.data); // Establece los datos del usuario autenticado
-//                 setIsAuthenticated(true); // Marca como autenticado
-//             } catch (error) {
-//                 console.error('Error al verificar el usuario:', error.response?.data || error.message);
-//                 setUser(null);
-//                 setIsAuthenticated(false);
-//             } finally {
-//                 setLoading(false); // Finaliza el estado de carga
-//             }
-//         };
-
-//         fetchUser();
-//     }, []);
-
-//     // Función para manejar el inicio de sesión
-//     const login = async (email, password) => {
-//         try {
-//             const response = await axiosInstance.post('/api/users/login/', {
-//                 email,
-//                 password,
-//             });
-
-//             localStorage.setItem('access_token', response.data.access); // Guarda el token de acceso
-//             setUser(response.data.user); // Establece los datos del usuario autenticado
-//             setIsAuthenticated(true); // Marca como autenticado
-//         } catch (error) {
-//             console.error('Error al iniciar sesión:', error.response?.data || error.message);
-//             throw error; // Lanza el error para manejarlo en la interfaz
-//         }
+//       try {
+//         const response = await axiosInstance.get("/api/users/profile/", {
+//           headers: {
+//             Authorization: `Bearer ${token}`,
+//           },
+//         });
+//         setUser(response.data);
+//       } catch (error) {
+//         console.error("Error al verificar el usuario:", error.message);
+//         setUser(null);
+//       } finally {
+//         setLoading(false);
+//       }
 //     };
 
-//     // Función para manejar el cierre de sesión
-//     const logout = async () => {
-//         try {
-//             await axiosInstance.post('/api/users/logout/');
-//             localStorage.removeItem('access_token'); // Elimina el token de acceso
-//             setUser(null); // Limpia los datos del usuario
-//             setIsAuthenticated(false); // Marca como no autenticado
-//         } catch (error) {
-//             console.error('Error al cerrar sesión:', error.response?.data || error.message);
-//         }
-//     };
+//     fetchUser();
+//   }, []);
 
-//     // Proveer valores del contexto
-//     return (
-//         <AuthContext.Provider value={{ user, login, logout, isAuthenticated, loading }}>
-//             {children}
-//         </AuthContext.Provider>
-//     );
+//   const login = async (email, password) => {
+//     const response = await axiosInstance.post("/api/users/login/", {
+//       email,
+//       password,
+//     });
+//     localStorage.setItem("access_token", response.data.access);
+//     setUser(response.data.user);
+//   };
+
+//   const logout = () => {
+//     localStorage.removeItem("access_token");
+//     setUser(null);
+//   };
+
+//   return (
+//     <AuthContext.Provider value={{ user, login, logout, loading }}>
+//       {children}
+//     </AuthContext.Provider>
+//   );
 // };
+
 
 "use client";
 
@@ -87,31 +69,48 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Función para verificar y refrescar el token
+  const verifyToken = async () => {
+    const accessToken = localStorage.getItem("access_token");
+    const refreshToken = localStorage.getItem("refresh_token");
+
+    if (!accessToken || !refreshToken) {
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Verificar si el token de acceso es válido
+      const profileResponse = await axiosInstance.get("/api/users/profile/", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+      setUser(profileResponse.data);
+    } catch (error) {
+      if (error.response && error.response.status === 401) {
+        // Token de acceso expirado, intentar refrescar
+        try {
+          const refreshResponse = await axiosInstance.post("/api/users/refresh/", {
+            refresh: refreshToken,
+          });
+          localStorage.setItem("access_token", refreshResponse.data.access);
+          setUser(refreshResponse.data.user);
+        } catch (refreshError) {
+          console.error("Error al refrescar el token:", refreshError);
+          logout();
+        }
+      } else {
+        console.error("Error al verificar el usuario:", error);
+        logout();
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    console.log("AuthProvider inicializado");
-    const fetchUser = async () => {
-      const token = localStorage.getItem("access_token");
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const response = await axiosInstance.get("/api/users/profile/", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        setUser(response.data);
-      } catch (error) {
-        console.error("Error al verificar el usuario:", error.message);
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUser();
+    verifyToken();
   }, []);
 
   const login = async (email, password) => {
@@ -120,11 +119,13 @@ export const AuthProvider = ({ children }) => {
       password,
     });
     localStorage.setItem("access_token", response.data.access);
+    localStorage.setItem("refresh_token", response.data.refresh);
     setUser(response.data.user);
   };
 
   const logout = () => {
     localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
     setUser(null);
   };
 

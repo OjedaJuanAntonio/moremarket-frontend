@@ -15,17 +15,22 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+
     try {
       await login(email, password);
-      router.push("/");
+      router.push("/"); // Redirigir a la página principal después del login
     } catch (err) {
-      setError("Credenciales inválidas o error del servidor.");
+      if (err.response && err.response.data) {
+        setError(err.response.data.detail || "Credenciales inválidas.");
+      } else {
+        setError("Error al conectar con el servidor.");
+      }
     }
   };
 
-  if (loading) return <p>Cargando...</p>;
+  if (loading) return <p className="text-center mt-8">Cargando...</p>;
   if (user) {
-    router.push("/");
+    router.push("/"); // Redirigir si el usuario ya está autenticado
     return null;
   }
 
@@ -78,9 +83,10 @@ export default function LoginPage() {
           </div>
           <button
             type="submit"
-            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-200 font-semibold"
+            disabled={loading}
+            className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-200 font-semibold disabled:bg-blue-400"
           >
-            Iniciar Sesión
+            {loading ? "Iniciando sesión..." : "Iniciar Sesión"}
           </button>
         </form>
         <p className="text-sm text-gray-600 text-center mt-6">
