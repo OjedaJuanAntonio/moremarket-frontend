@@ -4,19 +4,23 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 
 export default function SubastasActivas() {
-  const [auctions, setAuctions] = useState([]); // Estado para guardar las subastas
+  const [auctions, setAuctions] = useState([]); // Estado para guardar las subastas activas
   const [timers, setTimers] = useState({}); // Estado para guardar los temporizadores
 
-  // Obtener subastas desde la API
+  // Obtener subastas desde la API y filtrar las que no han caducado
   useEffect(() => {
     const fetchAuctions = async () => {
       try {
-        const response = await fetch("http://localhost:8000/api/auctions/"); // Cambia por la URL de tu backend
+        const response = await fetch("http://localhost:8000/api/auctions/");
         if (!response.ok) {
           throw new Error("Error al obtener las subastas");
         }
         const data = await response.json();
-        setAuctions(data);
+        // Filtra las subastas para que sólo queden aquellas cuyo end_time es futuro
+        const activeAuctions = data.filter(
+          (auction) => new Date(auction.end_time) > new Date()
+        );
+        setAuctions(activeAuctions);
       } catch (error) {
         console.error("Error al cargar las subastas:", error);
       }
@@ -39,7 +43,7 @@ export default function SubastasActivas() {
     return () => clearInterval(interval);
   }, [auctions]);
 
-  // Función para formatear el tiempo
+  // Función para formatear el tiempo restante
   const formatTime = (ms) => {
     if (ms <= 0) return "Finalizada";
     const seconds = Math.floor((ms / 1000) % 60);

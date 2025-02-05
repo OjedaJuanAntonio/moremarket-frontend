@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useContext } from "react";
+import { useState, useContext, useEffect } from "react";
 import { AuthContext } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 
@@ -17,8 +17,12 @@ export default function LoginPage() {
     setError("");
 
     try {
-      await login(email, password);
-      router.push("/"); // Redirigir a la página principal después del login
+      const success = await login(email, password);
+      if (success) {
+        router.push("/");
+      } else {
+        setError("Credenciales inválidas.");
+      }
     } catch (err) {
       if (err.response && err.response.data) {
         setError(err.response.data.detail || "Credenciales inválidas.");
@@ -28,11 +32,14 @@ export default function LoginPage() {
     }
   };
 
+  // Si el usuario ya está autenticado, se redirige una vez que se haya renderizado el componente.
+  useEffect(() => {
+    if (user) {
+      router.push("/");
+    }
+  }, [user, router]);
+
   if (loading) return <p className="text-center mt-8">Cargando...</p>;
-  if (user) {
-    router.push("/"); // Redirigir si el usuario ya está autenticado
-    return null;
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-500">

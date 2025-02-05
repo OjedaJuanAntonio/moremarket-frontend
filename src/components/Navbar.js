@@ -2,21 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
-import { isAuthenticated, logout } from "@/utils/auth";
+import { useContext } from "react";
+import { AuthContext } from "@/context/AuthContext";
 
 const Navbar = () => {
   const pathname = usePathname();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  // Usamos el contexto para obtener el usuario y el método logout
+  const { user, logout } = useContext(AuthContext);
+  // Se considera logueado si existe un objeto usuario
+  const isLoggedIn = !!user;
 
-  useEffect(() => {
-    try {
-      setIsLoggedIn(isAuthenticated());
-    } catch {
-      setIsLoggedIn(false);
-    }
-  }, []);
-
+  // Función para asignar clases según si la ruta actual coincide con la ruta del enlace
   const linkClasses = (path) =>
     `px-3 py-2 rounded-md text-sm font-medium ${
       pathname === path ? "bg-white text-blue-600" : "text-white hover:bg-blue-700"
@@ -35,20 +31,58 @@ const Navbar = () => {
         </li>
         {isLoggedIn ? (
           <>
+            {/* Dropdown para Gestión de Subastas */}
             <li className="relative group">
               <button className="px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
                 Gestión de Subastas
               </button>
-              {/* Dropdown */}
               <ul className="absolute hidden group-hover:block bg-white text-black rounded shadow-lg p-2 mt-2">
                 <li>
-                  <Link href="/crear-subasta" className="block px-4 py-2 hover:bg-gray-200">
+                  <Link
+                    href="/crear-subasta"
+                    className="block px-4 py-2 hover:bg-gray-200"
+                  >
                     Crear Subasta
                   </Link>
                 </li>
                 <li>
-                  <Link href="/mis-subastas" className="block px-4 py-2 hover:bg-gray-200">
+                  <Link
+                    href="/subastas/mis-subastas"
+                    className="block px-4 py-2 hover:bg-gray-200"
+                  >
                     Mis Subastas
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/subastas/caducadas"
+                    className="block px-4 py-2 hover:bg-gray-200"
+                  >
+                    Subastas Caducadas
+                  </Link>
+                </li>
+              </ul>
+            </li>
+            {/* Dropdown para la cuenta del usuario */}
+            <li className="relative group">
+              <button className="px-3 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
+                Mi Cuenta
+              </button>
+              <ul className="absolute hidden group-hover:block bg-white text-black rounded shadow-lg p-2 mt-2">
+                <li>
+                  <Link
+                    href="/perfil"
+                    className="block px-4 py-2 hover:bg-gray-200"
+                  >
+                    Ver Perfil
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/perfil/editar"
+                    className="block px-4 py-2 hover:bg-gray-200"
+                  >
+                    Editar Perfil
                   </Link>
                 </li>
               </ul>
