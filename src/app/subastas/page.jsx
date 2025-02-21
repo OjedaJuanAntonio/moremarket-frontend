@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 
 export default function SubastasActivas() {
-  const [auctions, setAuctions] = useState([]); // Estado para guardar las subastas activas
-  const [timers, setTimers] = useState({}); // Estado para guardar los temporizadores
+  const [auctions, setAuctions] = useState([]);
+  const [timers, setTimers] = useState({});
+  const [error, setError] = useState("");
 
-  // Obtener subastas desde la API y filtrar las que no han caducado
   useEffect(() => {
     const fetchAuctions = async () => {
       try {
@@ -16,20 +16,23 @@ export default function SubastasActivas() {
           throw new Error("Error al obtener las subastas");
         }
         const data = await response.json();
-        // Filtra las subastas para que sólo queden aquellas cuyo end_time es futuro
-        const activeAuctions = data.filter(
+        // Asegúrate de que data es un arreglo o si usas paginación, usa data.results
+        const auctionsArray = Array.isArray(data) ? data : data.results || [];
+        // Filtrar solo las subastas activas (que no hayan caducado)
+        const activeAuctions = auctionsArray.filter(
           (auction) => new Date(auction.end_time) > new Date()
         );
         setAuctions(activeAuctions);
-      } catch (error) {
-        console.error("Error al cargar las subastas:", error);
+      } catch (err) {
+        console.error("Error al cargar las subastas:", err);
+        setError(err.message);
       }
     };
 
     fetchAuctions();
   }, []);
 
-  // Calcular tiempo restante y actualizar los temporizadores
+  // Actualiza el temporizador de cada subasta cada segundo
   useEffect(() => {
     const interval = setInterval(() => {
       const newTimers = auctions.reduce((acc, auction) => {
@@ -43,7 +46,7 @@ export default function SubastasActivas() {
     return () => clearInterval(interval);
   }, [auctions]);
 
-  // Función para formatear el tiempo restante
+  // Función para formatear tiempo (días, horas, minutos, segundos)
   const formatTime = (ms) => {
     if (ms <= 0) return "Finalizada";
     const seconds = Math.floor((ms / 1000) % 60);
@@ -53,22 +56,40 @@ export default function SubastasActivas() {
     return `${days}d ${hours}h ${minutes}m ${seconds}s`;
   };
 
+  // Función para calcular la puja más alta (o mostrar el precio inicial si no hay pujas)
+  const getHighestBid = (auction) => {
+    if (auction.bids && auction.bids.length > 0) {
+      // Convertir los montos a números y tomar el máximo
+      const maxBid = Math.max(...auction.bids.map(bid => Number(bid.amount)));
+      return maxBid;
+    }
+    return auction.starting_price;
+  };
+
   return (
     <div className="p-6">
       <h1 className="text-4xl font-bold text-center mb-8">Subastas Activas</h1>
+      {error && <p className="text-red-500 text-center mb-4">{error}</p>}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {auctions.length > 0 ? (
           auctions.map((auction) => (
-            <div key={auction.id} className="bg-white rounded-lg shadow-md p-4">
+            <div key={auction.id} className="bg-white rounded-lg shadow-md p-4 hover:shadow-xl transition-shadow">
               <img
                 src={auction.item_image || "/placeholder.png"}
                 alt={auction.item_name}
                 className="w-full h-40 object-cover rounded-md mb-4"
               />
               <h2 className="text-lg font-bold text-blue-600 mb-2">
-                <Link href={`/subastas/${auction.id}`}>{auction.item_name}</Link>
+                <Link href={`/subastas/${auction.id}`} className="hover:underline">
+                  {auction.item_name}
+                </Link>
               </h2>
-              <p className="text-gray-600 mb-1">Precio inicial: ${auction.starting_price}</p>
+              <p className="text-gray-600 mb-1">
+                Precio inicial: ${auction.starting_price}
+              </p>
+              <p className="text-gray-600 mb-1">
+                Puja más alta: ${getHighestBid(auction)}
+              </p>
               <p className="text-gray-600 mb-4">
                 Tiempo restante: <span className="font-bold">{formatTime(timers[auction.id])}</span>
               </p>
